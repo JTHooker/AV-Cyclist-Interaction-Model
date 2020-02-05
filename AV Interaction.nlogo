@@ -1,5 +1,5 @@
 turtles-own [ speed speed-limit speed-min energy collisionsbikes timenow vmax vmin saliencybike saliencysafety initialassociationstrength care newv memory
-              saliencyopenroad newassociationstrength selfcapacity care_attitude crashed ]
+              saliencyopenroad newassociationstrength selfcapacity care_attitude crashed autoSaliency]
 globals
 
    [ collisions
@@ -40,7 +40,7 @@ to setup
     ask n-of initial_cars (patches with [pcolor = grey ])
   [
     sprout 1
-      [ set breed cars set color white set shape "circle" set speed .8 set size 1
+      [ set breed cars set color green set shape "car top" set speed .8 set size 1
    set speed-limit max_speed_cars set speed-min 0.00  set energy random 30 set heading one-of [ 0 90 180 270 ] set collisionsbikes 0
    set timenow 0 set vmax maxv set vmin minv set saliencybike random-normal BicycleSaliency .1 set saliencysafety random-normal CareAttitude .1 set selfcapacity .05 set saliencyopenroad random-normal roadsaliency .1 set care random-normal careattitude .1
    set initialassociationstrength initialv set newassociationstrength initialv set memory 0 set timenow random memoryspan setlimits resetup ]
@@ -50,7 +50,7 @@ to setup
   ask n-of initial_avs (patches with [ pcolor = grey] )
    [
       sprout 1
-      [ set breed avs set color blue set shape "circle" set speed .8 set size 1
+      [ set breed avs set color blue set shape "car top" set speed .8 set size 1
   set speed-limit max_speed_cars set speed-min 0.00  set energy random 30 set heading one-of [ 0 90 180 270 ] set collisionsbikes 0
   set timenow 0 set vmax maxv set vmin minv set saliencybike random-normal BicycleSaliency .1 set saliencysafety random-normal CareAttitude .1 set selfcapacity .05 set saliencyopenroad random-normal roadsaliency .1 set care random-normal careattitude .1
    set initialassociationstrength 1 set newassociationstrength 1 set memory 1000 set timenow 0 resetup ]
@@ -60,8 +60,8 @@ to setup
   [
     sprout 1
       [ set breed bicycles set speed .3 set size 1
-  set speed-limit max_speed_bikes set speed-min .01 set energy random 100 set VRUdensity 0 set color black set shape "person" set heading one-of [ 0 90 180 270 ] set crashed 0
-    set timenow 0 set vmax maxv set vmin minv set saliencybike random-normal BicycleSaliency .1 set saliencysafety random-normal CareAttitude .1 set selfcapacity .05 set saliencyopenroad random-normal roadsaliency .1 set care random-normal careattitude .1
+  set speed-limit max_speed_bikes set speed-min .01 set energy random 100 set VRUdensity 0 set color blue set shape "bike top" set heading one-of [ 0 90 180 270 ] set crashed 0
+    set timenow 0 set vmax maxv set vmin minv set AutoSaliency random-normal AVSaliency .1 set saliencySafety random-normal CareAttitude .1 set selfcapacity .05 set saliencyopenroad random-normal roadsaliency .1 set care random-normal careattitude .1
    set initialassociationstrength initialv set newassociationstrength initialv set memory 0 set timenow random memoryspan resetup
   ]]
   ; create cities of blue areas
@@ -85,10 +85,8 @@ to resetup
   if saliencysafety < 0 [ set saliencysafety random-normal CareAttitude .1 ]
   if saliencyopenroad < 0 [ set saliencyopenroad random-normal roadsaliency .1 ]
   if care < 0 [ set care random-normal careattitude .1 ]
+  if AutoSaliency > 1 or AutoSaliency < 0 [ set AutoSaliency random-normal AVSaliency .1 ]
 end
-
-
-
 
 to setup-globals
   set grid-x-inc world-width / grid-size-x
@@ -215,18 +213,17 @@ to
 
     ask cars [ separate-cars max-turtles-cars collide turntoo calculatecarefactorcars rememberbikes resetinitial ]
     ask avs [ separate-cars max-turtles-cars collide turntoo resetinitial ]
-    ask bicycles [ bike-energy max-turtles-cars iceblock death turn morebikes hadacrash remembercars calculatecarefactorbikes resetinitial ]
+    ask bicycles [ max-turtles-cars iceblock death turn morebikes hadacrash remembercars calculatecarefactorbikes resetinitial ] ;;bike-energy
 
     check-bicycles
     ask patches [ if any? cars-here [ set pcolor grey ] ]
     ask patches [ if any? avs-here [ set pcolor grey ] ]
-    ask patches [ if any? bicycles-here [ set pcolor green ] ]
+    ;;ask patches [ if any? bicycles-here [ set pcolor green ] ]
     ask patches [ if count turtles-here < 1 [ set empty 1 ] ]
     ask patches [ if count turtles-here > 0 [ set empty 0 ] ]
   ;;boundary
     tradevehicles
-
-        tick
+    tick
  end
 
 to hadacrash
@@ -237,40 +234,36 @@ end
 
 to calculatecarefactorcars
   if memory = 1 [ set newv ( ( saliencybike * Saliencyopenroad ) * (( vmax - initialassociationstrength ) * ( Careattitude * selfcapacity )))
-    set newassociationstrength ( initialassociationstrength + newv ) ]
+     set newassociationstrength ( initialassociationstrength + newv )]
   if newv > vmax [ set newv vmax ]
   if newv < vmin [ set newv vmin ]
   set vmax maxv set vmin minv
-  set saliencybike BicycleSaliency set Saliencyopenroad Roadsaliency set Care_Attitude Careattitude set selfcapacity capacity
-  if saliencybike > 1 [ set saliencybike 1 ]
-  if saliencysafety > 1 [ set saliencysafety 1 ]
-  if saliencyopenroad > 1 [ set saliencyopenroad 1 ]
+  if comparisons = true [set saliencybike BicycleSaliency set Saliencyopenroad Roadsaliency set Care_Attitude Careattitude set selfcapacity capacity ]
+  resetup
 end
 
 to calculatecarefactorbikes
-  if memory = 1 [ set newv ( ( saliencybike * Saliencyopenroad ) * (( vmax - initialassociationstrength ) * ( Careattitude * selfcapacity ))) ;;newv isn't working properly
-    set newassociationstrength ( initialassociationstrength + newv ) ]
+  if memory = 1 [ set newv ( ( autoSaliency * Saliencyopenroad ) * (( vmax - initialassociationstrength ) * ( Careattitude * selfcapacity )))
+  set newassociationstrength ( initialassociationstrength + newv )]
   if newv > vmax [ set newv vmax ]
   if newv < vmin [ set newv vmin ]
   set vmax maxv set vmin minv
-  set saliencybike BicycleSaliency set Saliencyopenroad Roadsaliency set Care_Attitude Careattitude set selfcapacity capacity
-  if saliencybike > 1 [ set saliencybike 1 ]
-  if saliencysafety > 1 [ set saliencysafety 1 ]
-  if saliencyopenroad > 1 [ set saliencyopenroad 1 ]
+  if comparisons = true [ set saliencybike BicycleSaliency set Saliencyopenroad Roadsaliency set Care_Attitude Careattitude set selfcapacity capacity set autosaliency AVSaliency ]
+  resetup
 end
 
 to rememberbikes ;; if cars see a bike ahead of them, they remember that they have seen a bike - This is the gateway to losing memory that there were bikes on the road you just travelled on
   if any? bicycles-on patch-at-heading-and-distance 0 1 [ set memory 1 set timenow ticks ]
     if ticks - timenow > memoryspan [ set memory 0 set newassociationstrength ( newassociationstrength - (newassociationstrength * ( saliencybike * saliencyopenroad )))  ]
-     if memory = 0 [ set color white ]
+     if memory = 0 [ set color green ]
      if memory = 1 [ set color red ]
 end
 
 to remembercars  ;; if bicycles see an av or car ahead of them, they remember that they have seen an av or car - This is the gateway to losing memory that there were avs on the road you just travelled on
   if any? avs-on patch-at-heading-and-distance 0 1 [ set memory 1 set timenow ticks ]
-     if ticks - timenow > ( memoryspan ) [ set memory 0 set newassociationstrength ( newassociationstrength - ( newassociationstrength * ( saliencybike * saliencyopenroad ))) set color black ]
-  if any? cars-on patch-at-heading-and-distance 0 1 [ set memory 0 set newassociationstrength ( newassociationstrength - ( newassociationstrength * ( saliencybike * saliencyopenroad ))) set color black ]
-  if memory = 1 [ set color yellow ]
+     if ticks - timenow > ( memoryspan ) [ set memory 0 set newassociationstrength ( newassociationstrength - ( newassociationstrength * ( AutoSaliency * saliencyopenroad ))) set color green ]
+  if any? cars-on patch-at-heading-and-distance 0 1 [ set memory 0 set newassociationstrength ( newassociationstrength - ( newassociationstrength * ( AutoSaliency * saliencyopenroad ))) set color blue ]
+  if memory = 1 [ set color green ]
   ;; here I have made bicycles forget very quickly about AVs when they find that there is a car with a driver right where they are
 end
 
@@ -305,7 +298,7 @@ end
 
 to collide ;count collisions - collision risk reduces at rate proportional to newassociation strength
   if speed > 0.01 and any? bicycles-here with [ speed > .01 ] and (newassociationstrength * 10 ) < random 10  [ set collisionsbikes 1 set shape "star" ]
-  if not any? bicycles-on patch-here [ set collisionsbikes 0 set shape "circle" ]
+  if not any? bicycles-on patch-here [ set collisionsbikes 0 set shape "car top" ]
 end
 
 to tradevehicles
@@ -319,10 +312,10 @@ to create_AVs
   ask n-of 1 (patches with [ pcolor = grey] )
    [
       sprout 1
-      [ set breed avs set color blue set shape "circle" set speed .8 set size 1
+      [ set breed avs set color blue set shape "car top" set speed .8 set size 1
   set speed-limit max_speed_cars set speed-min 0.00  set energy random 30 set heading one-of [ 0 90 180 270 ] set collisionsbikes 0
-  set timenow 0 set vmax maxv set vmin minv set saliencybike BicycleSaliency  set saliencysafety Care_attitude set selfcapacity .05 set saliencyopenroad 1 set care 1
-   set initialassociationstrength 1 set newassociationstrength 1 set memory 1000 set timenow 0 ]
+  set timenow 0 set vmax maxv set vmin minv set saliencybike BicycleSaliency set saliencysafety Care_attitude set selfcapacity .05 set saliencyopenroad 1 set care 1
+   set initialassociationstrength 1 set newassociationstrength 1 set memory 1000 set timenow 0 resetup ]
   ]
 end
 
@@ -776,7 +769,7 @@ BicycleSaliency
 BicycleSaliency
 0
 1
-0.6
+1.0
 .01
 1
 NIL
@@ -820,8 +813,8 @@ SLIDER
 Memoryspan
 Memoryspan
 0
-30
-45.0
+50
+15.0
 1
 1
 NIL
@@ -891,9 +884,9 @@ SLIDER
 Initial_AVs
 Initial_AVs
 0
-5000
+2000
 1.0
-1
+50
 1
 NIL
 HORIZONTAL
@@ -931,17 +924,6 @@ count avs
 1
 11
 
-MONITOR
-765
-456
-832
-501
-Efficiency
-mean [ speed ] of turtles * 10
-2
-1
-11
-
 BUTTON
 198
 29
@@ -959,42 +941,36 @@ NIL
 NIL
 1
 
+SLIDER
+560
+599
+703
+632
+AVSaliency
+AVSaliency
+0
+1
+1.0
+.1
+1
+NIL
+HORIZONTAL
+
+SWITCH
+1100
+566
+1226
+599
+Comparisons
+Comparisons
+0
+1
+-1000
+
 @#$#@#$#@
 ## WHAT IS IT?
 
-A model of Human driver, AV, and Cyclist interaction
-
-## HOW IT WORKS
-
-(what rules the agents use to create the overall behavior of the model)
-
-## HOW TO USE IT
-
-(how to use the model, including a description of each of the items in the Interface tab)
-
-## THINGS TO NOTICE
-
-(suggested things for the user to notice while running the model)
-
-## THINGS TO TRY
-
-(suggested things for the user to try to do (move sliders, switches, etc.) with the model)
-
-## EXTENDING THE MODEL
-
-(suggested things to add or change in the Code tab to make the model more complicated, detailed, accurate, etc.)
-
-## NETLOGO FEATURES
-
-(interesting or unusual features of NetLogo that the model uses, particularly in the Code tab; or where workarounds were needed for missing features)
-
-## RELATED MODELS
-
-(models in the NetLogo Models Library and elsewhere which are of related interest)
-
-## CREDITS AND REFERENCES
-
-(a reference to the model's URL on the web if it has one, as well as any other necessary credits, citations, and links)
+Autonomous vehicles (AVs) have been promoted as a solution to the issue of collisions between vehicles and vulnerable road users such as cyclists, however, how humans will respond to the introduction of AVs is uncertain. This study used an agent-based model to explore how AVs, human-operated vehicles, and cyclists might interact based on flawlessly performing AVs. The results of the modelling demonstrated that, although no crashes occurred between cyclists and AVs, collision rates among human-operated cars and cyclists increased with the introduction of AVs due to cyclists’ adjusted ex-pectations of the behaviour and capability of cars (both human-operated and autonomous). Similarly, when human-operated cars were replaced with AVs over time, cyclist crash rates did not follow a linear reduction consistent with the replacement rate. It is concluded that the introduction of AVs into a transport system may create new sources of error that offset proposed benefits of AV technology.
 @#$#@#$#@
 default
 true
@@ -1055,6 +1031,22 @@ Polygon -16777216 true false 70 87 70 72 78 71 78 89
 Circle -7500403 false false 153 184 22
 Line -7500403 false 159 206 228 205
 
+bike top
+true
+9
+Rectangle -16777216 true false 68 47 83 122
+Rectangle -16777216 true false 67 180 82 255
+Rectangle -2674135 true false 68 103 83 178
+Circle -13345367 true false 46 129 58
+Circle -13791810 true true 54 112 42
+Rectangle -16777216 true false 42 106 92 114
+Rectangle -16777216 true false 62 106 112 114
+Rectangle -2674135 true false 55 108 96 113
+Line -7500403 false 75 99 75 55
+Line -7500403 false 74 233 74 189
+Line -1 false 63 182 68 155
+Line -1 false 88 180 83 157
+
 box
 false
 0
@@ -1095,6 +1087,21 @@ Circle -16777216 true false 30 180 90
 Polygon -16777216 true false 162 80 132 78 134 135 209 135 194 105 189 96 180 89
 Circle -7500403 true true 47 195 58
 Circle -7500403 true true 195 195 58
+
+car top
+true
+0
+Polygon -7500403 true true 76 8 44 10 23 25 11 48 7 225 15 270 30 289 75 294 120 291 135 270 144 225 139 47 126 24 106 11
+Polygon -1 true false 132 198 117 213 117 138 132 108
+Polygon -1 true false 30 270 45 285 105 285 120 270 120 240 30 240
+Polygon -1 true false 18 202 33 217 33 142 18 112
+Polygon -1 true false 124 33 99 34 100 15
+Line -7500403 true 80 171 65 171
+Line -7500403 true 90 165 105 165
+Polygon -1 true false 44 138 103 137 127 100 105 92 76 88 43 92 21 100
+Line -16777216 false 129 92 114 32
+Line -16777216 false 15 90 30 30
+Polygon -1 true false 19 35 44 36 43 17
 
 circle
 false
@@ -1515,13 +1522,16 @@ NetLogo 6.1.0
       <value value="1"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="deployment2" repetitions="1" runMetricsEveryStep="true">
+  <experiment name="CarDeployment" repetitions="1" runMetricsEveryStep="true">
     <setup>setup
-set Initial_AVs 0</setup>
+set Initial_AVs 0
+set initial_cars 2000</setup>
     <go>go
-if ticks = 250 [ set Initial_cars 2500 ]</go>
-    <timeLimit steps="750"/>
+if ticks = 100 [ set Initial_cars 2500 ]</go>
+    <timeLimit steps="200"/>
     <metric>count bicycles with [ crashed = 1 ]</metric>
+    <metric>mean [ newassociationstrength ] of bicycles</metric>
+    <metric>mean [ newassociationstrength ] of cars</metric>
     <enumeratedValueSet variable="car-on-pedestrian">
       <value value="0"/>
     </enumeratedValueSet>
@@ -1605,6 +1615,11 @@ if ticks = 250 [ set Initial_cars 2500 ]</go>
     <enumeratedValueSet variable="manual_change">
       <value value="true"/>
     </enumeratedValueSet>
+    <enumeratedValueSet variable="AVSaliency">
+      <value value="0.6"/>
+      <value value="0.8"/>
+      <value value="1"/>
+    </enumeratedValueSet>
   </experiment>
   <experiment name="Trade" repetitions="1" runMetricsEveryStep="true">
     <setup>setup</setup>
@@ -1615,6 +1630,7 @@ if ticks &gt; 100 [ set Trade true ]</go>
     <metric>count cars</metric>
     <metric>mean [ newassociationstrength ] of bicycles</metric>
     <metric>mean [ newassociationstrength ] of cars</metric>
+    <metric>mean [ speed ] of bicycles</metric>
     <enumeratedValueSet variable="car-on-pedestrian">
       <value value="0"/>
     </enumeratedValueSet>
@@ -1699,14 +1715,17 @@ if ticks &gt; 100 [ set Trade true ]</go>
       <value value="0"/>
     </enumeratedValueSet>
   </experiment>
-  <experiment name="deployment3" repetitions="1" runMetricsEveryStep="true">
+  <experiment name="AVdeployment" repetitions="1" runMetricsEveryStep="true">
     <setup>setup
-set Initial_AVs 0</setup>
+set Initial_AVs 0
+set Initial_cars 2000</setup>
     <go>go
-if ticks = 250 [ set Initial_AVs 1 ]
-if ticks = 251 [ set Initial_AVs 500 ]</go>
-    <timeLimit steps="750"/>
+if ticks = 100 [ set Initial_AVs 1 ]
+if ticks = 101 [ set Initial_AVs 500 ]</go>
+    <timeLimit steps="200"/>
     <metric>count bicycles with [ crashed = 1 ]</metric>
+    <metric>mean [ newassociationstrength ] of bicycles</metric>
+    <metric>mean [ newassociationstrength ] of cars</metric>
     <enumeratedValueSet variable="car-on-pedestrian">
       <value value="0"/>
     </enumeratedValueSet>
@@ -1789,6 +1808,11 @@ if ticks = 251 [ set Initial_AVs 500 ]</go>
     </enumeratedValueSet>
     <enumeratedValueSet variable="manual_change">
       <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="AVSaliency">
+      <value value="0.6"/>
+      <value value="0.8"/>
+      <value value="1"/>
     </enumeratedValueSet>
   </experiment>
 </experiments>
